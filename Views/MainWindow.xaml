@@ -38,6 +38,12 @@
                      PlaceholderText="Enter Value"
                      Width="150"/>
 
+            <Button Content="Set Value"
+                    Click="InsertVal_Button"/>
+            
+            <Button Content="Get Value"
+                    Click="Get_value"/>
+
             <Button Click="Undo_Click">
                 <SymbolIcon Symbol="Undo"/>
             </Button>

@@ -27,7 +27,7 @@ namespace Simple_Sheet_App.Views
 {
     public sealed partial class MainWindow : Window
     {
-        private readonly MainViewModel vm = new MainViewModel();
+        private readonly MainViewModel viewModel = new MainViewModel();
 
         private int totalRows = 100;
         private int totalCols = 100;
@@ -41,12 +41,12 @@ namespace Simple_Sheet_App.Views
             this.InitializeComponent();
             _ = InitializeAsync();
         }
-
         private async Task InitializeAsync()
         {
-            await vm.LoadAsync();
+            await viewModel.LoadAsync();
             SheetCanvas.Width = totalCols * cellW;
             SheetCanvas.Height = totalRows * cellH;
+            SheetCanvas.Invalidate();
         }
 
         private void SheetCanvas_Draw(CanvasControl sender, CanvasDrawEventArgs args)
@@ -75,7 +75,7 @@ namespace Simple_Sheet_App.Views
             {
                 for (int c = 0; c < totalCols; c++)
                 {
-                    string val = vm.GetValue(r, c);
+                    string val = viewModel.GetValue(r, c);
                     if (!string.IsNullOrEmpty(val))
                     {
                         ds.DrawText(val,
@@ -117,7 +117,7 @@ namespace Simple_Sheet_App.Views
             EditBox.Width = cellW;
             EditBox.Height = cellH;
 
-            EditBox.Text = vm.GetValue(selRow, selCol);
+            EditBox.Text = viewModel.GetValue(selRow, selCol);
 
             EditBox.Visibility = Visibility.Visible;
             EditBox.Focus(FocusState.Programmatic);
@@ -128,7 +128,7 @@ namespace Simple_Sheet_App.Views
         {
             if(e.Key == Windows.System.VirtualKey.Enter)
             {
-                await vm.InsertValue(selRow, selCol, EditBox.Text);
+                await viewModel.InsertValue(selRow, selCol, EditBox.Text);
                 EditBox.Visibility = Visibility.Collapsed;
                 SheetCanvas.Invalidate();
                 e.Handled = true;
@@ -139,36 +139,31 @@ namespace Simple_Sheet_App.Views
         {
             if (EditBox.Visibility == Visibility.Visible)
             {
-                await vm.InsertValue(selRow, selCol, EditBox.Text);
+                await viewModel.InsertValue(selRow, selCol, EditBox.Text);
                 EditBox.Visibility = Visibility.Collapsed;
                 SheetCanvas.Invalidate();
             }
         }
 
-
-        /*
         private void InsertVal_Button(Object Sender, RoutedEventArgs e)
         {
             if (int.TryParse(RowBox.Text, out int row) && int.TryParse(ColBox.Text, out int col))
             {
                 String value = ValBox.Text;
-                var cell = vm.InsertValue(row-1, col-1, value);
-                if (cell != null)
-                {
-                    UpdateUI(row, col, value);
-                }
+                var cell = viewModel.InsertValue(row-1, col-1, value);
             }
             else
             {
                 StatBox.Text = "Row and Column values must be Integers";
             }
+            SheetCanvas.Invalidate();
         }
 
         public void Get_value(Object sender, RoutedEventArgs e)
         {
             if (int.TryParse(RowBox.Text, out int row) && int.TryParse(ColBox.Text, out int col))
             {
-                String value = vm.GetValue(row - 1, col - 1);
+                String value = viewModel.GetValue(row - 1, col - 1);
                 if (value == "")
                 {
                     StatBox.Text = "Nothing There";
@@ -183,26 +178,24 @@ namespace Simple_Sheet_App.Views
                 StatBox.Text = "Row and Column values must be Integers";
             }
         }
-        */
 
         public async void Undo_Click(Object sender, RoutedEventArgs e)
         {
-            var result = await vm.HandleUndo();
-            if (result != null)
+            var result = await viewModel.HandleUndo();
+            if (result.Value.cell != null)
             {
-                selRow = result.RowNum;
-                selCol = result.ColNum;
-                SheetCanvas.Invalidate();
+                selRow = result.Value.row;
+                selCol = result.Value.col;
+                SheetCanvas.Invalidate();  
             }
         }
-
         public async void Redo_Click(Object sender, RoutedEventArgs e)
         {
-            var result = await vm.HandleRedo();
-            if (result != null)
+            var result = await viewModel.HandleRedo();
+            if (result.Value.cell != null)
             {
-                selRow = result.RowNum;
-                selCol = result.ColNum;
+                selRow = result.Value.row;
+                selCol = result.Value.col;
                 SheetCanvas.Invalidate();
             }
         }

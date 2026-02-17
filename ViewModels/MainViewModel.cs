@@ -20,13 +20,10 @@ namespace Simple_Sheet_App.ViewModels
             string oldValue = gridManager.GetValue(row, col);
             await gridManager.SetCell(row, col, value);
             var action = new CellAction(row, col, oldValue, value);
-            if (action != null)
-            {
-                undoRedoManager.Register(action);
-            }
+            undoRedoManager.Register(action);
 
-            Cell cell = new Cell(row, col, value, DateTime.Now);
-            return cell;
+            int key = string.IsNullOrEmpty(value) ? -1 : gridManager.GetKey(row, col);
+            return new Cell(value, DateTime.Now, key);
         }
 
         public string GetValue(int row, int col) => gridManager.GetValue(row, col);
@@ -43,12 +40,12 @@ namespace Simple_Sheet_App.ViewModels
         } 
         */
 
-        public async Task<Cell?> HandleUndo()
+        public async Task<(Cell cell, int row, int col)?> HandleUndo()
         {
             return await undoRedoManager.Undo();
         }
 
-        public async Task<Cell?> HandleRedo()
+        public async Task<(Cell cell, int row, int col)?> HandleRedo()
         {
             return await undoRedoManager.Redo();
         }
