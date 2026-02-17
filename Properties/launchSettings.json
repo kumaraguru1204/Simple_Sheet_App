@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "Simple Sheet App (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "Simple Sheet App (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}
