@@ -30,8 +30,8 @@ namespace Simple_Sheet_App.Models
 
             while (await reader.ReadAsync())
             {
-                int rowNum = reader.GetInt32("rowNum")-1;
-                int colNum = reader.GetInt32("colNum")-1;
+                int rowNum = reader.GetInt32("rowNum") - 1;
+                int colNum = reader.GetInt32("colNum") - 1;
                 String cellValue = reader.GetString("cellValue");
                 DateTime lastModified = reader.GetDateTime("lastModified");
 
@@ -121,8 +121,8 @@ namespace Simple_Sheet_App.Models
             String query = @"INSERT INTO cell (rowNum, colNum, cellValue, lastModified)
                                       VALUES(@row, @col, @val, @modified) ";
             using var cmd = new MySqlCommand(query, conn);
-            cmd.Parameters.AddWithValue("@row", newCell.RowNum+1);
-            cmd.Parameters.AddWithValue("@col", newCell.ColNum+1);
+            cmd.Parameters.AddWithValue("@row", newCell.RowNum + 1);
+            cmd.Parameters.AddWithValue("@col", newCell.ColNum + 1);
             cmd.Parameters.AddWithValue("@val", newCell.Value);
             cmd.Parameters.AddWithValue("@modified", newCell.LastModified);
 
@@ -137,8 +137,8 @@ namespace Simple_Sheet_App.Models
             String query = @"DELETE FROM cell
                              WHERE rowNum = @row and colNum = @col";
             using var cmd = new MySqlCommand(query, conn);
-            cmd.Parameters.AddWithValue("@row", row+1);
-            cmd.Parameters.AddWithValue("@col", col+1);
+            cmd.Parameters.AddWithValue("@row", row + 1);
+            cmd.Parameters.AddWithValue("@col", col + 1);
 
             await cmd.ExecuteNonQueryAsync();
         }
@@ -152,8 +152,8 @@ namespace Simple_Sheet_App.Models
                              SET cellValue = @val, lastModified = @modified
                              WHERE rowNum = @row and colNum = @col";
             using var cmd = new MySqlCommand(query, conn);
-            cmd.Parameters.AddWithValue("@row", cell.RowNum+1);
-            cmd.Parameters.AddWithValue("@col", cell.ColNum+1);
+            cmd.Parameters.AddWithValue("@row", cell.RowNum + 1);
+            cmd.Parameters.AddWithValue("@col", cell.ColNum + 1);
             cmd.Parameters.AddWithValue("@val", cell.Value);
             cmd.Parameters.AddWithValue("@modified", cell.LastModified);
 

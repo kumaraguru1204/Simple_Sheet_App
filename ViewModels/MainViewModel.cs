@@ -20,9 +20,9 @@ namespace Simple_Sheet_App.ViewModels
             string oldValue = gridManager.GetValue(row, col);
             await gridManager.SetCell(row, col, value);
             var action = new CellAction(row, col, oldValue, value);
-            if(action != null)
+            if (action != null)
             {
-            undoRedoManager.Register(action);
+                undoRedoManager.Register(action);
             }
 
             Cell cell = new Cell(row, col, value, DateTime.Now);
