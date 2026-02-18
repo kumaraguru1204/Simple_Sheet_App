@@ -186,8 +186,8 @@ namespace Simple_Sheet_App.Views
             {
                 selRow = result.Value.row;
                 selCol = result.Value.col;
-                SheetCanvas.Invalidate();  
             }
+            SheetCanvas.Invalidate();  
         }
         public async void Redo_Click(Object sender, RoutedEventArgs e)
         {
@@ -196,8 +196,8 @@ namespace Simple_Sheet_App.Views
             {
                 selRow = result.Value.row;
                 selCol = result.Value.col;
-                SheetCanvas.Invalidate();
             }
+            SheetCanvas.Invalidate();
         }
 
         public async void Make_Action(object sender, RoutedEventArgs e)

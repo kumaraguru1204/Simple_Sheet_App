@@ -58,7 +58,6 @@ namespace Simple_Sheet_App.Models
             }
         }
 
-
         public async Task SetCell(int row, int col, String val)
         {
             if (string.IsNullOrEmpty(val))
@@ -95,10 +94,11 @@ namespace Simple_Sheet_App.Models
             return db[key].Value;
         }
 
-        public void DeleteValue(int row, int col)
+        public async void DeleteValue(int row, int col)
         {
-            if (db.ContainsKey(cellKeys[(row, col)]))
+            if (cellKeys.ContainsKey((row, col)) && db.ContainsKey(cellKeys[(row, col)]))
             {
+                await DeleteDbValue(row, col);
                 db.Remove(cellKeys[(row, col)]);
                 cellKeys.Remove((row, col));
             }
@@ -141,7 +141,7 @@ namespace Simple_Sheet_App.Models
             String query1 = @"DELETE FROM cellKeys
                               WHERE cellKey = @key1";
             using var cmd = new MySqlCommand(query, conn);
-            cmd.Parameters.AddWithValue("@key", cellKeys[(row,col)]);
+            cmd.Parameters.AddWithValue("@key", cellKeys[(row, col)]);
             await cmd.ExecuteNonQueryAsync();
 
             using var cmd1 = new MySqlCommand(query1, conn);
@@ -166,70 +166,116 @@ namespace Simple_Sheet_App.Models
             await cmd.ExecuteNonQueryAsync();
         }
 
-        public async Task<bool> insertRow(int position)
+        public async Task UpdateCellKey(int cellKey, int newRow, int newCol)
         {
+            using var conn = new MySqlConnection(conStr);
+            await conn.OpenAsync();
+            string query = @"UPDATE cellKeys SET rowNum = @row, colNum = @col WHERE cellKey = @key";
+            using var cmd = new MySqlCommand(query, conn);
+            cmd.Parameters.AddWithValue("@row", newRow);
+            cmd.Parameters.AddWithValue("@col", newCol);
+            cmd.Parameters.AddWithValue("@key", cellKey);
+            await cmd.ExecuteNonQueryAsync();
+        }
+
+        public async Task<InsOrDelAction> insertRow(int position)
+        {
+            position--;
             var keysToShift = cellKeys.Keys
                 .Where(k => k.Item1 >= position)
                 .ToList();
+            List<(int, int, String)> oldValues = new List<(int, int, string)>();
+            List<(int, int, String)> newValues = new List<(int, int, string)>();
 
             foreach (var key in keysToShift)
             {
                 int val = cellKeys[key];
+                oldValues.Add((key.Item1, key.Item2, db[val].Value));
+                await UpdateCellKey(val, key.Item1 + 1, key.Item2); 
                 cellKeys.Remove(key);
                 cellKeys[(key.Item1 + 1, key.Item2)] = val;
+                newValues.Add((key.Item1 + 1, key.Item2, db[val].Value));
             }
-            return true;
+            InsOrDelAction insertRow = new InsOrDelAction(oldValues, newValues, "insertRow");
+            return insertRow;
         }
 
-        public async Task<bool> insertColumn(int position)
+        public async Task<InsOrDelAction> insertColumn(int position)
         {
+            position--;
             var keysToShift = cellKeys.Keys
                 .Where(k => k.Item2 >= position)
                 .ToList();
+            List<(int, int, String)> oldValues = new List<(int, int, string)>();
+            List<(int, int, String)> newValues = new List<(int, int, string)>();
 
             foreach (var key in keysToShift)
             {
                 int val = cellKeys[key];
+                oldValues.Add((key.Item1, key.Item2, db[val].Value));
+                await UpdateCellKey(val, key.Item1, key.Item2 + 1);
                 cellKeys.Remove(key);
-                cellKeys[(key.Item1, key.Item2+1)] = val;
+                cellKeys[(key.Item1, key.Item2 + 1)] = val;
+                newValues.Add((key.Item1, key.Item2 + 1, db[val].Value));
             }
-            return true;
+            InsOrDelAction insertCol = new InsOrDelAction(oldValues, newValues, "insertCol");
+            return insertCol;
         }
 
-        public async Task<bool> deleteRow(int position)
+        public async Task<InsOrDelAction> deleteRow(int position)
         {
-            var keysToShift = cellKeys.Keys
-                .Where(k => k.Item1 >= position)
-                .ToList();
+            position--;
+            var keysToShift = cellKeys.Keys.Where(k => k.Item1 >= position).OrderBy(k => k.Item2).ToList();
+            List<(int, int, String)> oldValues = new List<(int, int, string)>();
+            List<(int, int, String)> newValues = new List<(int, int, string)>();
 
             foreach (var key in keysToShift)
             {
                 int val = cellKeys[key];
-                cellKeys.Remove(key);
-                if(key.Item1 != position)
+                oldValues.Add((key.Item1, key.Item2, db[val].Value));
+
+                if (key.Item1 != position)
                 {
-                cellKeys[(key.Item1 - 1, key.Item2)] = val;
+                    cellKeys[(key.Item1 - 1, key.Item2)] = val;
+                    newValues.Add((key.Item1 - 1, key.Item2, db[val].Value));
+                    await UpdateCellKey(val, key.Item1 - 1, key.Item2);
                 }
+                else
+                {
+                    db.Remove(val);
+                    await DeleteDbValue(key.Item1, key.Item2);
+                }
+                cellKeys.Remove(key);
             }
-            return true;
+            return new InsOrDelAction(oldValues, newValues, "deleteRow");
         }
 
-        public async Task<bool> deleteColumn(int position)
+        public async Task<InsOrDelAction> deleteColumn(int position)
         {
-            var keysToShift = cellKeys.Keys
-                .Where(k => k.Item2 >= position)
-                .ToList();
+            position--;
+            var keysToShift = cellKeys.Keys.Where(k => k.Item2 >= position).OrderBy(k => k.Item2).ToList();
+            List<(int, int, String)> oldValues = new List<(int, int, string)>();
+            List<(int, int, String)> newValues = new List<(int, int, string)>();
 
             foreach (var key in keysToShift)
             {
                 int val = cellKeys[key];
-                cellKeys.Remove(key);
+                oldValues.Add((key.Item1, key.Item2, db[val].Value));
+
                 if (key.Item2 != position)
                 {
-                cellKeys[(key.Item1, key.Item2-1)] = val;
+                    cellKeys[(key.Item1, key.Item2 - 1)] = val;
+                    newValues.Add((key.Item1, key.Item2 - 1, db[val].Value));
+                    await UpdateCellKey(val, key.Item1, key.Item2 - 1); 
                 }
+                else
+                {
+                    db.Remove(val);
+                    await DeleteDbValue(key.Item1, key.Item2);
+                }
+                cellKeys.Remove(key);
             }
-            return true;
+            return new InsOrDelAction(oldValues, newValues, "deleteCol");
         }
     }
 }
