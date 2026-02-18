@@ -1,4 +1,5 @@
-﻿using Simple_Sheet_App.Models;
+﻿using Microsoft.UI.Composition.Interactions;
+using Simple_Sheet_App.Models;
 using System;
 using System.Threading.Tasks;
 
@@ -48,6 +49,30 @@ namespace Simple_Sheet_App.ViewModels
         public async Task<(Cell cell, int row, int col)?> HandleRedo()
         {
             return await undoRedoManager.Redo();
+        }
+
+        public async Task<bool> insertRow(int position)
+        {
+            if(await gridManager.insertRow(position)) { return true; }
+            return false;
+        }
+
+        public async Task<bool> insertColumn(int position)
+        {
+            if(await gridManager.insertColumn(position)) { return true; }
+            return false;
+        }
+
+        public async Task<bool> deleteRow(int position)
+        {
+            if(await gridManager.deleteRow(position)) { return true; }
+            return false;
+        }
+
+        public async Task<bool> deleteColumn(int position)
+        {
+            if(await gridManager.deleteColumn(position)) { return true; }
+            return false;
         }
     }
 }

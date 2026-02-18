@@ -182,7 +182,7 @@ namespace Simple_Sheet_App.Views
         public async void Undo_Click(Object sender, RoutedEventArgs e)
         {
             var result = await viewModel.HandleUndo();
-            if (result.Value.cell != null)
+            if (result.HasValue && result.Value.cell != null)
             {
                 selRow = result.Value.row;
                 selCol = result.Value.col;
@@ -192,10 +192,46 @@ namespace Simple_Sheet_App.Views
         public async void Redo_Click(Object sender, RoutedEventArgs e)
         {
             var result = await viewModel.HandleRedo();
-            if (result.Value.cell != null)
+            if (result.HasValue && result.Value.cell != null)
             {
                 selRow = result.Value.row;
                 selCol = result.Value.col;
+                SheetCanvas.Invalidate();
+            }
+        }
+
+        public async void Make_Action(object sender, RoutedEventArgs e)
+        {
+            String? action = actionBox.SelectedItem as String;
+            String input = rowOrCol.Text;
+            if (action == null || string.IsNullOrWhiteSpace(input))
+            {
+                return;
+            }
+
+            if (!int.TryParse(input, out int position))
+            {
+                return;
+            }
+
+            if(action == "Insert Row")
+            {
+                await viewModel.insertRow(position);
+                SheetCanvas.Invalidate();
+            }
+            else if(action == "Insert Column")
+            {
+                await viewModel.insertColumn(position);
+                SheetCanvas.Invalidate();
+            }
+            else if(action == "Delete Row")
+            {
+                await viewModel.deleteRow(position);
+                SheetCanvas.Invalidate();
+            }
+            else if(action == "Delete Column")
+            {
+                await viewModel.deleteColumn(position);
                 SheetCanvas.Invalidate();
             }
         }

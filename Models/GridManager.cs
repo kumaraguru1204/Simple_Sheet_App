@@ -165,5 +165,71 @@ namespace Simple_Sheet_App.Models
 
             await cmd.ExecuteNonQueryAsync();
         }
+
+        public async Task<bool> insertRow(int position)
+        {
+            var keysToShift = cellKeys.Keys
+                .Where(k => k.Item1 >= position)
+                .ToList();
+
+            foreach (var key in keysToShift)
+            {
+                int val = cellKeys[key];
+                cellKeys.Remove(key);
+                cellKeys[(key.Item1 + 1, key.Item2)] = val;
+            }
+            return true;
+        }
+
+        public async Task<bool> insertColumn(int position)
+        {
+            var keysToShift = cellKeys.Keys
+                .Where(k => k.Item2 >= position)
+                .ToList();
+
+            foreach (var key in keysToShift)
+            {
+                int val = cellKeys[key];
+                cellKeys.Remove(key);
+                cellKeys[(key.Item1, key.Item2+1)] = val;
+            }
+            return true;
+        }
+
+        public async Task<bool> deleteRow(int position)
+        {
+            var keysToShift = cellKeys.Keys
+                .Where(k => k.Item1 >= position)
+                .ToList();
+
+            foreach (var key in keysToShift)
+            {
+                int val = cellKeys[key];
+                cellKeys.Remove(key);
+                if(key.Item1 != position)
+                {
+                cellKeys[(key.Item1 - 1, key.Item2)] = val;
+                }
+            }
+            return true;
+        }
+
+        public async Task<bool> deleteColumn(int position)
+        {
+            var keysToShift = cellKeys.Keys
+                .Where(k => k.Item2 >= position)
+                .ToList();
+
+            foreach (var key in keysToShift)
+            {
+                int val = cellKeys[key];
+                cellKeys.Remove(key);
+                if (key.Item2 != position)
+                {
+                cellKeys[(key.Item1, key.Item2-1)] = val;
+                }
+            }
+            return true;
+        }
     }
 }

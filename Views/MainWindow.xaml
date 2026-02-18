@@ -51,6 +51,24 @@
             <Button Click="Redo_Click">
                 <SymbolIcon Symbol="Redo"/>
             </Button>
+            <DropDownButton Content="Actions">
+                <DropDownButton.Flyout>
+                    <Flyout Placement="Bottom">
+                        <StackPanel Width="200"  Spacing="8" Padding="10">
+                            <ComboBox x:Name="actionBox" PlaceholderText="Choose Action" Width="150" HorizontalAlignment="Center">
+                                <x:String>Insert Row</x:String>
+                                <x:String>Insert Column</x:String>
+                                <x:String>Delete Row</x:String>
+                                <x:String>Delete Column</x:String>
+                            </ComboBox>
+                            <TextBlock Text="Enter the row/col below" HorizontalAlignment="Center"/>
+                            <TextBox x:Name="rowOrCol" Width="100" HorizontalAlignment="Center"/>
+                            <Button Content="Make Action" Click="Make_Action" HorizontalAlignment="Center"/>
+
+                        </StackPanel>
+                    </Flyout>
+                </DropDownButton.Flyout>
+            </DropDownButton>
 
 
             <TextBlock x:Name="StatBox"
