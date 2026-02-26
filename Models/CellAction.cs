@@ -22,7 +22,5 @@ namespace Simple_Sheet_App.Models
             this.newValue = newValue;
             //this.mode = mode;
         }
-
-
     }
 }

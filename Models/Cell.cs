@@ -9,17 +9,16 @@ namespace Simple_Sheet_App.Models
 {
     public class Cell
     {
-        public int RowNum { get; set; }
-        public int ColNum { get; set; }
         public String Value { get; set; }
         public DateTime LastModified { get; set; }
+        public int CellKey { get; set; }
 
-        public Cell(int rowNum, int colNum, String value, DateTime lastModified)
+        public Cell(String value, DateTime lastModified, int cellKey)
         {
-            RowNum = rowNum;
-            ColNum = colNum;
+
             Value = value;
             LastModified = DateTime.Now;
+            CellKey = cellKey;
         }
         public void UpdateValue(String val)
         {

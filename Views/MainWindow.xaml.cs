@@ -1,3 +1,6 @@
+using Microsoft.Graphics.Canvas.Text;
+using Microsoft.Graphics.Canvas.UI.Xaml;
+using Microsoft.UI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
@@ -16,81 +19,129 @@ using System.Threading.Tasks;
 using Windows.Devices.PointOfService;
 using Windows.Foundation;
 using Windows.Foundation.Collections;
+using Windows.Security.Cryptography.Core;
 using Windows.Storage.Provider;
+using Windows.UI;
 
 namespace Simple_Sheet_App.Views
 {
     public sealed partial class MainWindow : Window
     {
-        private readonly MainViewModel vm = new MainViewModel();
-        private Dictionary<(int row, int col), TextBlock> cellMap = new Dictionary<(int row, int col), TextBlock>();
+        private readonly MainViewModel viewModel = new MainViewModel();
 
+        private int totalRows = 100;
+        private int totalCols = 100;
+        private double cellW = 128;
+        private double cellH = 40;
+
+        private int selRow = -1;
+        private int selCol = -1;
         public  MainWindow()
         {
             this.InitializeComponent();
             _ = InitializeAsync();
         }
-
         private async Task InitializeAsync()
         {
-            await vm.LoadAsync();
-            CreateGrid(100, 100);
+            await viewModel.LoadAsync();
+            SheetCanvas.Width = totalCols * cellW;
+            SheetCanvas.Height = totalRows * cellH;
+            SheetCanvas.Invalidate();
+        }
 
-            for (int r = 0; r < 100; r++)
+        private void SheetCanvas_Draw(CanvasControl sender, CanvasDrawEventArgs args)
+        {
+            var ds = args.DrawingSession;
+
+            for (int r = 0; r <= totalRows; r++)
             {
-                for (int c = 0; c < 100; c++)
+                float y = (float)(r * cellH);
+                ds.DrawLine(0, y, (float)(totalCols * cellW), y, Colors.LightGray, 0.5f);
+            }
+
+            for (int c = 0; c <= totalCols; c++)
+            {
+                float x = (float)(c * cellW);
+                ds.DrawLine(x, 0, x, (float)(totalRows * cellH), Colors.LightGray, 0.5f);
+            }
+
+            var textFormat = new CanvasTextFormat
+            {
+                FontSize = 13,
+                VerticalAlignment = CanvasVerticalAlignment.Center
+            };
+
+            for (int r = 0; r < totalRows; r++)
+            {
+                for (int c = 0; c < totalCols; c++)
                 {
-                    var val = vm.GetValue(r, c);
+                    string val = viewModel.GetValue(r, c);
                     if (!string.IsNullOrEmpty(val))
                     {
-                        UpdateUI(r+1, c+1, val);
+                        ds.DrawText(val,
+                            new Rect(c * cellW + 8, r * cellH, cellW - 16, cellH),
+                            Colors.White,
+                            textFormat);
                     }
                 }
             }
+
+            if (selRow >= 0 && selCol >= 0)
+            {
+                ds.DrawRectangle(
+                    (float)(selCol * cellW),
+                    (float)(selRow * cellH),
+                    (float)cellW,
+                    (float)cellH,
+                    Colors.RosyBrown, 2f);
+            }
         }
 
-        public void CreateGrid(int Rows, int Cols)
+        private void SheetCanvas_PointerPressed(object sender, PointerRoutedEventArgs e)
         {
-            cellMap.Clear();
+            var point = e.GetCurrentPoint(SheetCanvas).Position;
 
-            for (int i = 0; i < Rows; i++)
-                MyGrid.RowDefinitions.Add(new RowDefinition
-                {
-                    Height = new GridLength(40)
-                });
+            selRow = (int)(point.Y / cellH);
+            selCol = (int)(point.X / cellW);
 
-            for (int j = 0; j < Cols; j++)
-                MyGrid.ColumnDefinitions.Add(new ColumnDefinition
-                {
-                    Width = new GridLength(128)
-                });
+            SheetCanvas.Invalidate();
+        }
 
-            for (int i = 0; i < Rows; i++)
+        private void SheetCanvas_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
+        {
+            if (selRow < 0 || selCol < 0) return;
+            double X = selCol * cellW;
+            double Y = selRow * cellH;
+
+            EditBox.Margin = new Thickness(X, Y, 0, 0);
+            EditBox.Width = cellW;
+            EditBox.Height = cellH;
+
+            EditBox.Text = viewModel.GetValue(selRow, selCol);
+
+            EditBox.Visibility = Visibility.Visible;
+            EditBox.Focus(FocusState.Programmatic);
+            EditBox.SelectAll();
+        }
+
+        private async void EditBox_KeyDown(object sender, KeyRoutedEventArgs e)
+        {
+            if(e.Key == Windows.System.VirtualKey.Enter)
             {
-                for (int j = 0; j < Cols; j++)
-                {
-                    var border = new Border
-                    {
-                        BorderThickness = new Thickness(0.5),
-                        BorderBrush = new SolidColorBrush(Microsoft.UI.Colors.LavenderBlush),
-                        Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent)
-                    };
+                await viewModel.InsertValue(selRow, selCol, EditBox.Text);
+                EditBox.Visibility = Visibility.Collapsed;
+                SheetCanvas.Invalidate();
+                e.Handled = true;
+            }
+        }
 
-                    var text = new TextBlock
-                    {
-                        VerticalAlignment = VerticalAlignment.Center,
-                        HorizontalAlignment = HorizontalAlignment.Center
-                    };
-
-                    border.Child = text;
-                    Grid.SetRow(border, i);
-                    Grid.SetColumn(border, j);
-                    border.Tapped += Cell_Highlighter;
-
-                    MyGrid.Children.Add(border);
-
-                    cellMap[(i, j)] = text;
-                }
+        private async void EditBox_LostFocus(object sender, RoutedEventArgs e)
+        {
+            if (EditBox.Visibility == Visibility.Visible)
+            {
+                await viewModel.InsertValue(selRow, selCol, EditBox.Text);
+                EditBox.Visibility = Visibility.Collapsed;
+                SheetCanvas.Invalidate();
             }
         }
 
@@ -99,118 +150,20 @@ namespace Simple_Sheet_App.Views
             if (int.TryParse(RowBox.Text, out int row) && int.TryParse(ColBox.Text, out int col))
             {
                 String value = ValBox.Text;
-                var cell = vm.InsertValue(row-1, col-1, value);
-                if (cell != null)
-                {
-                    UpdateUI(row, col, value);
-                }
+                var cell = viewModel.InsertValue(row-1, col-1, value);
             }
             else
             {
                 StatBox.Text = "Row and Column values must be Integers";
             }
-        }
-
-        private Border selectedCell;
-        private void Cell_Highlighter(Object Sender, RoutedEventArgs e)
-        {
-            Border clicked = (Border)Sender;
-
-            if (selectedCell != null)
-            {
-                selectedCell.BorderBrush = new SolidColorBrush(Microsoft.UI.Colors.LavenderBlush);
-            }
-
-            selectedCell = clicked;
-            selectedCell.BorderBrush = new SolidColorBrush(Microsoft.UI.Colors.Yellow);
-
-            CellEditor(selectedCell);
-            StatBox.Text = "Tapped";
-        }
-        private string cellOriginalValue;
-        private void CellEditor(Border border)
-        {
-            var text = border.Child as TextBlock;
-            String newText;
-            if (text is null)
-            {
-                newText = "";
-            }
-            else
-            {
-                newText = text.Text;
-            }
-
-            cellOriginalValue = newText;
-
-            var box = new TextBox()
-            {
-                Text = newText
-            };
-
-            box.KeyDown += KeyEditor;
-
-            border.Child = box;
-            box.Focus(FocusState.Programmatic);
-        }
-
-        private void KeyEditor(Object sender, KeyRoutedEventArgs e)
-        {
-            if (e.Key == Windows.System.VirtualKey.Enter)
-            {
-                TextBox box = (TextBox)sender;
-                Border border = (Border)box.Parent;
-
-                int row = Grid.GetRow(border);
-                int col = Grid.GetColumn(border);
-
-                var cell = vm.InsertValue(row, col, box.Text);
-
-                var newTextBlock = new TextBlock
-                {
-                    Text = box.Text,
-                    HorizontalAlignment = HorizontalAlignment.Center,
-                    VerticalAlignment = VerticalAlignment.Center
-                };
-
-                border.Child = newTextBlock;
-
-                cellMap[(row, col)] = newTextBlock;
-
-                if (selectedCell is not null)
-                {
-                    selectedCell.BorderBrush = new SolidColorBrush(Microsoft.UI.Colors.LavenderBlush);
-                }
-                selectedCell = null;
-            }
-        }
-
-        public void UpdateUI(int row, int col, String val)
-        {
-            if (row < 0 || col < 0 || row >= 100 || col >= 100)
-            {
-                StatBox.Text = "Enter rows and cols between 1 to 100";
-                return;
-            }
-
-            if (cellMap.TryGetValue((row-1, col-1), out var textBlock))
-            {
-                textBlock.Text = val;
-                if (RowBox.Text != "" && ColBox.Text == "")
-                {
-                    StatBox.Text = "Inserted";
-                }
-                RowBox.Text = "";
-                ColBox.Text = "";
-                ValBox.Text = "";
-            }
+            SheetCanvas.Invalidate();
         }
 
         public void Get_value(Object sender, RoutedEventArgs e)
         {
             if (int.TryParse(RowBox.Text, out int row) && int.TryParse(ColBox.Text, out int col))
             {
-                String value = vm.GetValue(row - 1, col - 1);
+                String value = viewModel.GetValue(row - 1, col - 1);
                 if (value == "")
                 {
                     StatBox.Text = "Nothing There";
@@ -228,19 +181,58 @@ namespace Simple_Sheet_App.Views
 
         public async void Undo_Click(Object sender, RoutedEventArgs e)
         {
-            var cell = await vm.HandleUndo();
-            if (cell != null)
+            var result = await viewModel.HandleUndo();
+            if (result.HasValue && result.Value.cell != null)
             {
-                UpdateUI(cell.RowNum+1, cell.ColNum+1, cell.Value);
+                selRow = result.Value.row;
+                selCol = result.Value.col;
             }
+            SheetCanvas.Invalidate();  
         }
-
         public async void Redo_Click(Object sender, RoutedEventArgs e)
         {
-            var cell = await vm.HandleRedo();
-            if (cell != null)
+            var result = await viewModel.HandleRedo();
+            if (result.HasValue && result.Value.cell != null)
             {
-                UpdateUI(cell.RowNum+1, cell.ColNum+1, cell.Value);
+                selRow = result.Value.row;
+                selCol = result.Value.col;
+            }
+            SheetCanvas.Invalidate();
+        }
+
+        public async void Make_Action(object sender, RoutedEventArgs e)
+        {
+            String? action = actionBox.SelectedItem as String;
+            String input = rowOrCol.Text;
+            if (action == null || string.IsNullOrWhiteSpace(input))
+            {
+                return;
+            }
+
+            if (!int.TryParse(input, out int position))
+            {
+                return;
+            }
+
+            if(action == "Insert Row")
+            {
+                await viewModel.insertRow(position);
+                SheetCanvas.Invalidate();
+            }
+            else if(action == "Insert Column")
+            {
+                await viewModel.insertColumn(position);
+                SheetCanvas.Invalidate();
+            }
+            else if(action == "Delete Row")
+            {
+                await viewModel.deleteRow(position);
+                SheetCanvas.Invalidate();
+            }
+            else if(action == "Delete Column")
+            {
+                await viewModel.deleteColumn(position);
+                SheetCanvas.Invalidate();
             }
         }
     }
