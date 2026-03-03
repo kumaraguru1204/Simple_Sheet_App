@@ -1,0 +1,15 @@
+There are only two tables in the database
+The used database here is MySql
+
+
+CREATE TABLE cell (
+    cellValue TEXT,
+    lastModified DATETIME,
+    cellKey INT
+);
+
+CREATE TABLE cellKeys(
+	cellKey INT PRIMARY KEY,
+    rowNum INT,
+    colNum INT
+);
